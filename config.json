@@ -1,0 +1,13 @@
+{
+  "input": "./gallery",
+  "output": "./build_output",
+  "title": "Imagestack Photo Gallery",
+  "sort-albums-by": "end-date",
+  "sort-media-by": "filename",
+  "download-photos": "copy",
+  "cleanup": true,
+  "theme": "flow",
+  "css": "./custom.css",
+  "footer": "Copyright Text",
+  "usage-stats": false
+}
