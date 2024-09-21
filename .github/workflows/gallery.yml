@@ -31,3 +31,13 @@ jobs:
         uses: geekyeggo/delete-artifact@v4
         with:
           name: gh-pages
+      - name: Backup with rclone
+        run: |
+          cat << EOF > ./rclone.conf
+          ${{ secrets.OBJSTACK_RCLONE_CONF }}
+          EOF
+          sudo apt install -y rclone
+          rclone --config rclone.conf copy -v --check-first \
+          --size-only --max-size 1G --max-age 30d -u \
+          --exclude "{.git\,.github\,}" --exclude ".gitkeep" --exclude ".DS_Store" \
+          --no-update-modtime "./" Gdrive-IILM:/Github/imagestack.github.io/
