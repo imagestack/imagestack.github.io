@@ -1,0 +1,57 @@
+name: Publish Gallery
+on: [workflow_dispatch]
+
+permissions:
+  id-token: write
+  actions: write
+  pages: write
+jobs:
+  deploy:
+    name: Publish Gallery to Github Pages [Test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses:  actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Upload To Gphotos & Autumn Dusk [Test]
+        run: |
+          cat << EOF > ./rclone.conf
+          ${{ secrets.OBJSTACK_RCLONE_CONF }}
+          EOF
+          sudo apt install -y rclone
+      
+          files=($(git --no-pager show --oneline --name-only --pretty='' HEAD))
+
+          echo $files
+          
+          if (( ${#files[@]} <= 4 ));
+          then
+          	IFS=""
+          	for f in ${files[@]};
+          	do
+          	  file_part=$(echo "$f" | awk -F "gallery/" '{print $NF}')
+          	  url="https://darkcamel.edc0.com/media/large/$file_part"
+          	    
+          	  case "$f" in
+          	  *gallery/desktop-wallpapers* )
+                rclone --config rclone.conf copy -v --check-first --size-only --ignore-existing --max-size 1G --max-age 30d \
+                -u --no-update-modtime "gallery/desktop-wallpapers/" GPhotos-Personal:/album/Desktop-Wallpapers/
+                
+                curl https://graph.edc0.com/edc0/autumn/darkcamel?entry_url=$url
+
+          	  ;;
+          	  *gallery/mobile-wallpaper* )
+                rclone --config rclone.conf copy -v --check-first --size-only --ignore-existing --max-size 1G --max-age 30d \
+                -u --no-update-modtime "gallery/mobile-wallpapers/" GPhotos-Personal:/album/IOS-Wallpapers/
+                
+                curl https://graph.edc0.com/edc0/autumn/darkcamel?entry_url=$url
+          	  ;;
+          	  esac
+              sleep 2
+              
+          	done
+          else 
+          	echo "No modified files";
+          fi
