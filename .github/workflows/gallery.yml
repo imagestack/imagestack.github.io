@@ -1,5 +1,5 @@
 name: Publish Gallery
-on: [workflow_dispatch]
+on: [push, workflow_dispatch]
 
 permissions:
   id-token: write
@@ -8,13 +8,12 @@ permissions:
 jobs:
   deploy:
     name: Publish Gallery to Github Pages
-    if: ${{ github.repository != 'gautamkrishnar/github-pages-gallery' && github.event.head_commit.message != '' && github.event.head_commit.message != 'Initial commit' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
         uses:  actions/checkout@v4
         with:
-          persist-credentials: false
+          fetch-depth: 0
       - name: Build Gallery 🔧
         run: docker run -v "$(pwd):/work" ghcr.io/thumbsup/thumbsup /bin/sh -c "cd /work/ && thumbsup --config config.json"
       - name: Package and upload artifact 📦
@@ -27,16 +26,14 @@ jobs:
         with:
           artifact_name: gh-pages
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Delete artifact 🗑️
-        uses: geekyeggo/delete-artifact@v4
-        with:
-          name: gh-pages
+
 
       - name: Upload To Gphotos & Autumn Dusk
         run: |
           cat << EOF > ./rclone.conf
           ${{ secrets.OBJSTACK_RCLONE_CONF }}
           EOF
+          sudo apt update -y
           sudo apt install -y rclone
           rclone --config rclone.conf copy -v --check-first \
           --size-only --max-size 1G --max-age 30d -u \
@@ -44,28 +41,26 @@ jobs:
           --no-update-modtime "gallery/" Gdrive-IILM:/Github/imagestack.github.io/gallery/
       
           files=($(git --no-pager show --oneline --name-only --pretty='' HEAD))
+          echo $files
           
           if (( ${#files[@]} <= 4 ));
           then
           	IFS=""
           	for f in ${files[@]};
           	do
+              echo "Processing: $f"
           	  file_part=$(echo "$f" | awk -F "gallery/" '{print $NF}')
           	  url="https://darkcamel.edc0.com/media/large/$file_part"
           	    
           	  case "$f" in
           	  *gallery/desktop-wallpapers* )
-                rclone --config rclone.conf copy -v --check-first --size-only --ignore-existing --max-size 1G --max-age 30d \
+                rclone --config rclone.conf copy -v --exclude .gitkeep --check-first --size-only --ignore-existing --max-size 1G --max-age 30d \
                 -u --no-update-modtime "gallery/desktop-wallpapers/" GPhotos-Personal:/album/Desktop-Wallpapers/
-                
-                curl https://graph.edc0.com/edc0/autumn/darkcamel?entry_url=$url
-
+            
           	  ;;
           	  *gallery/mobile-wallpaper* )
-                rclone --config rclone.conf copy -v --check-first --size-only --ignore-existing --max-size 1G --max-age 30d \
+                rclone --config rclone.conf copy -v --exclude .gitkeep --check-first --size-only --ignore-existing --max-size 1G --max-age 30d \
                 -u --no-update-modtime "gallery/mobile-wallpapers/" GPhotos-Personal:/album/IOS-Wallpapers/
-                
-                curl https://graph.edc0.com/edc0/autumn/darkcamel?entry_url=$url
           	  ;;
           	  esac
               sleep 2
@@ -74,3 +69,7 @@ jobs:
           else 
           	echo "No modified files";
           fi
+      - name: Delete artifact 🗑️
+        uses: geekyeggo/delete-artifact@v4
+        with:
+          name: gh-pages
